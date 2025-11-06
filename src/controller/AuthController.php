@@ -1,7 +1,7 @@
 <?php
-// controllers/AuthController.php
+// src/controller/AuthController.php
 
-require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../Model/User.php';
 
 class AuthController {
     public function login() {
@@ -16,29 +16,42 @@ class AuthController {
             exit;
         }
 
+        $error = ''; // Inicializar variable de error
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = $_POST['username'] ?? '';
             $password = $_POST['password'] ?? '';
 
-            $userModel = new User();
-            $user = $userModel->login($username, $password);
-
-            if ($user) {
-                // Establecer variables de sesión
-                $_SESSION['user'] = $user;
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                
-                header("Location: index.php?controller=tokenapi&action=index");
-                exit;
+            // Validar que no estén vacíos
+            if (empty($username) || empty($password)) {
+                $error = "Por favor, completa todos los campos.";
             } else {
-                $error = "Usuario o contraseña incorrectos.";
-                require __DIR__ . '/../views/auth/login.php';
+                $userModel = new User();
+                $user = $userModel->login($username, $password);
+
+                if ($user) {
+                    // Establecer variables de sesión
+                    $_SESSION['user'] = $user;
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    
+                    // Redirigir al index de tokens
+                    header("Location: index.php?controller=tokenapi&action=index");
+                    exit;
+                } else {
+                    $error = "Usuario o contraseña incorrectos.";
+                }
             }
-        } else {
-            // Mostrar formulario de login
-            require __DIR__ . '/../views/auth/login.php';
         }
+
+        // RUTA CORREGIDA - usa views (no ../views)
+        $viewPath = __DIR__ . '/../views/auth/login.php';
+        
+        if (!file_exists($viewPath)) {
+            die("Error: No se encuentra la vista de login. Ruta: $viewPath");
+        }
+        
+        require $viewPath;
     }
 
     public function logout() {

@@ -1,11 +1,12 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
-    header('Location: /auth/login');
+    header("Location: index.php?controller=auth&action=login");
     exit;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -14,21 +15,30 @@ if (!isset($_SESSION['user_id'])) {
     <title>Generar Nuevo Token</title>
     <style>
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .btn { padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; display: inline-block; }
+        .btn-back { background: #6c757d; }
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .btn { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input, select { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 1rem; }
+        input:focus, select:focus { outline: none; border-color: #007bff; }
+        .btn-submit { background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+        .btn-submit:hover { background: #218838; }
+        .form-actions { display: flex; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Generar Nuevo Token API</h1>
+        <div class="header">
+            <h1>Generar Nuevo Token API</h1>
+            <a href="index.php?controller=tokenapi&action=index" class="btn btn-back">Volver al Listado</a>
+        </div>
         
-        <form method="POST">
+        <form method="POST" action="index.php?controller=tokenapi&action=create">
             <div class="form-group">
                 <label for="name">Nombre del Token:</label>
                 <input type="text" id="name" name="name" required 
-                       placeholder="Ej: Mi Aplicación Móvil">
+                       placeholder="Ej: Mi Aplicación Móvil, API de Producción, etc.">
             </div>
             
             <div class="form-group">
@@ -41,8 +51,10 @@ if (!isset($_SESSION['user_id'])) {
                 </select>
             </div>
             
-            <button type="submit" class="btn">Generar Token</button>
-            <a href="/token_api" style="margin-left: 10px;">Cancelar</a>
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Generar Token</button>
+                <a href="index.php?controller=tokenapi&action=index" class="btn btn-back">Cancelar</a>
+            </div>
         </form>
     </div>
 </body>

@@ -1,4 +1,6 @@
 <?php
+// src/config/database.php
+
 class Database {
     private static $instance = null;
     private $pdo;
@@ -8,7 +10,7 @@ class Database {
             $this->pdo = new PDO(
                 "mysql:host=localhost;dbname=cliente_api;charset=utf8mb4", 
                 "root", 
-                "root",
+                "root", // Cambia si tu password es diferente
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -17,7 +19,7 @@ class Database {
             );
         } catch (PDOException $e) {
             error_log("Error de conexión: " . $e->getMessage());
-            die("Error de conexión a la base de datos");
+            die("Error de conexión a la base de datos: " . $e->getMessage());
         }
     }
 
@@ -28,7 +30,6 @@ class Database {
         return self::$instance->pdo;
     }
 
-    // Método getConnection para compatibilidad
     public static function getConnection() {
         return self::getInstance();
     }
@@ -41,7 +42,7 @@ class Database {
 function createTablesIfNotExist() {
     $pdo = Database::getInstance();
     
-    // Tabla de usuarios
+    // Primero crear la tabla de usuarios
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -54,7 +55,7 @@ function createTablesIfNotExist() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
 
-    // Tabla de tokens API
+    // Luego crear la tabla de tokens_api SIN la foreign key primero
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS tokens_api (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -64,12 +65,24 @@ function createTablesIfNotExist() {
             created_at DATETIME NOT NULL,
             expires_at DATETIME NOT NULL,
             is_active TINYINT DEFAULT 1,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             INDEX idx_user_id (user_id),
             INDEX idx_token (token),
             INDEX idx_expires (expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
+
+    // Ahora agregar la foreign key si no existe
+    try {
+        $pdo->exec("
+            ALTER TABLE tokens_api 
+            ADD CONSTRAINT fk_tokens_api_user_id 
+            FOREIGN KEY (user_id) REFERENCES users(id) 
+            ON DELETE CASCADE
+        ");
+    } catch (PDOException $e) {
+        // La foreign key probablemente ya existe, podemos ignorar el error
+        error_log("Foreign key posiblemente ya existe: " . $e->getMessage());
+    }
 
     // Insertar usuario demo si no existe
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'admin'");
@@ -81,6 +94,6 @@ function createTablesIfNotExist() {
     }
 }
 
-// Ejecutar la creación de tablas al incluir este archivo
+// Ejecutar la creación de tablas
 createTablesIfNotExist();
 ?>

@@ -20,7 +20,7 @@ class AdminController {
         if ($admin && password_verify($password, $admin['password_hash'])) {
             $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['admin_name'] = $admin['name'];
-            header('Location: /?route=hotel:index');
+            header('Location: /?route=tokenapi:index');
             exit;
         } else {
             $_SESSION['flash'] = 'Usuario o contraseña inválidos';
@@ -33,6 +33,6 @@ class AdminController {
         session_start();
         session_unset();
         session_destroy();
-        header('Location: /?route=hotel:index');
+        header('Location: /?route=tokenapi:index');
     }
 }

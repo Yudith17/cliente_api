@@ -1,7 +1,7 @@
 <?php
-// controllers/TokenApiController.php
+// src/controller/TokenApiController.php
 
-require_once __DIR__ . '/../models/TokenApi.php';
+require_once __DIR__ . '/../Model/TokenApi.php';
 
 class TokenApiController {
     private $tokenModel;
@@ -22,7 +22,15 @@ class TokenApiController {
         }
 
         $tokens = $this->tokenModel->getByUserId($_SESSION['user_id']);
-        require __DIR__ . '/../views/token_api/index.php';
+        
+        // RUTA CORREGIDA
+        $viewPath = __DIR__ . '/../views/token_api/index.php';
+        
+        if (!file_exists($viewPath)) {
+            die("Vista no encontrada: $viewPath");
+        }
+        
+        require $viewPath;
     }
 
     public function create() {
@@ -52,7 +60,11 @@ class TokenApiController {
             }
         }
 
-        require __DIR__ . '/../views/token_api/create.php';
+        $viewPath = __DIR__ . '/../views/token_api/create.php';
+        if (!file_exists($viewPath)) {
+            die("Vista no encontrada: $viewPath");
+        }
+        require $viewPath;
     }
 
     public function view() {
@@ -75,7 +87,11 @@ class TokenApiController {
             exit;
         }
 
-        require __DIR__ . '/../views/token_api/view.php';
+        $viewPath = __DIR__ . '/../views/token_api/view.php';
+        if (!file_exists($viewPath)) {
+            die("Vista no encontrada: $viewPath");
+        }
+        require $viewPath;
     }
 
     public function deactivate() {

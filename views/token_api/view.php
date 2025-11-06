@@ -34,7 +34,7 @@ if (!isset($_SESSION['user_id'])) {
             <a href="index.php?controller=tokenapi&action=index" class="btn btn-back">Volver al Listado</a>
         </div>
 
-        <?php if ($token): ?>
+        <?php if (isset($token) && $token): ?>
         <div class="token-info">
             <div class="info-row">
                 <div class="info-label">Nombre:</div>
