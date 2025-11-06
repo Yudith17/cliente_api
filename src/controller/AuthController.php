@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . '/../Model/User.php';
+// controllers/AuthController.php
+
+require_once __DIR__ . '/../models/User.php';
 
 class AuthController {
     public function login() {
@@ -8,9 +10,9 @@ class AuthController {
             session_start();
         }
 
-        // Si ya está autenticado, redirigir a un controlador que SÍ existe
-        if (isset($_SESSION['user']) || isset($_SESSION['usuario']) || isset($_SESSION['admin_id'])) {
-            header("Location: index.php?controller=clientapi&action=index");
+        // Si ya está autenticado, redirigir al controlador de tokens
+        if (isset($_SESSION['user_id'])) {
+            header("Location: index.php?controller=tokenapi&action=index");
             exit;
         }
 
@@ -22,9 +24,12 @@ class AuthController {
             $user = $userModel->login($username, $password);
 
             if ($user) {
+                // Establecer variables de sesión
                 $_SESSION['user'] = $user;
-                $_SESSION['usuario'] = $user['username'];
-                header("Location: index.php?controller=clientapi&action=index");
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                
+                header("Location: index.php?controller=tokenapi&action=index");
                 exit;
             } else {
                 $error = "Usuario o contraseña incorrectos.";
@@ -61,3 +66,4 @@ class AuthController {
         exit;
     }
 }
+?>
