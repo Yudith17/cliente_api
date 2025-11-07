@@ -1,54 +1,48 @@
 <?php
 // src/Model/TokenApi.php
 
-require_once __DIR__ . '/../config/database.php';
-
 class TokenApi {
     private $db;
-    
+    private $conn;
+
     public function __construct() {
-        $this->db = Database::getInstance();
+        require_once __DIR__ . '/../config/database.php';
+        $this->db = new Database();
+        $this->conn = $this->db->getConnection();
     }
 
-    public function create($user_id, $name, $expires_days = 30) {
-        $token = bin2hex(random_bytes(32));
-        $created_at = date('Y-m-d H:i:s');
-        $expires_at = date('Y-m-d H:i:s', strtotime("+$expires_days days"));
-        
-        $query = "INSERT INTO tokens_api (user_id, token, name, created_at, expires_at, is_active) 
-                  VALUES (?, ?, ?, ?, ?, 1)";
-        
-        $stmt = $this->db->prepare($query);
-        $result = $stmt->execute([$user_id, $token, $name, $created_at, $expires_at]);
-        
-        return $result ? $token : false;
-    }
-
+    // Todos los métodos deben usar $this->conn en lugar de $this->db
+    
     public function getByUserId($user_id) {
-        $query = "SELECT * FROM tokens_api WHERE user_id = ? ORDER BY created_at DESC";
-        $stmt = $this->db->prepare($query);
+        $stmt = $this->conn->prepare("SELECT * FROM tokens_api WHERE user_id = ? ORDER BY created_at DESC");
         $stmt->execute([$user_id]);
         return $stmt->fetchAll();
     }
 
-    public function getByToken($token) {
-        $query = "SELECT * FROM tokens_api WHERE token = ? AND is_active = 1 AND expires_at > NOW()";
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$token]);
+    public function getById($id) {
+        $stmt = $this->conn->prepare("SELECT * FROM tokens_api WHERE id = ?");
+        $stmt->execute([$id]);
         return $stmt->fetch();
     }
 
-    public function deactivate($token_id, $user_id) {
-        $query = "UPDATE tokens_api SET is_active = 0 WHERE id = ? AND user_id = ?";
-        $stmt = $this->db->prepare($query);
-        return $stmt->execute([$token_id, $user_id]);
+    public function create($user_id, $token, $name, $expires_at) {
+        $stmt = $this->conn->prepare("INSERT INTO tokens_api (user_id, token, name, created_at, expires_at) VALUES (?, ?, ?, NOW(), ?)");
+        return $stmt->execute([$user_id, $token, $name, $expires_at]);
     }
 
-    public function getById($token_id, $user_id) {
-        $query = "SELECT * FROM tokens_api WHERE id = ? AND user_id = ?";
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$token_id, $user_id]);
-        return $stmt->fetch();
+    public function update($id, $name, $expires_at) {
+        $stmt = $this->conn->prepare("UPDATE tokens_api SET name = ?, expires_at = ? WHERE id = ?");
+        return $stmt->execute([$name, $expires_at, $id]);
+    }
+
+    public function delete($id) {
+        $stmt = $this->conn->prepare("DELETE FROM tokens_api WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    public function deactivate($id) {
+        $stmt = $this->conn->prepare("UPDATE tokens_api SET is_active = 0 WHERE id = ?");
+        return $stmt->execute([$id]);
     }
 }
 ?>

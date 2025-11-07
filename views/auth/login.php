@@ -1,8 +1,4 @@
-# Verificar que el login.php existe
-ls -la /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php
 
-# Si no existe, créalo con este comando:
-cat > /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php << 'EOF'
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -23,6 +19,7 @@ cat > /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php << 'EOF'
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
 
         .login-container {
@@ -119,7 +116,7 @@ cat > /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php << 'EOF'
 <body>
     <div class="login-container">
         <div class="logo">
-            <h1>🔐 Api Hospedaje</h1>
+            <h1> Api Hospedaje</h1>
             <p>Gestión de Tokens API</p>
         </div>
         
@@ -144,11 +141,6 @@ cat > /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php << 'EOF'
             <button type="submit">Ingresar al Sistema</button>
         </form>
 
-        <div class="demo-info">
-            <strong>Credenciales de Demo</strong><br>
-            Usuario: <strong>admin</strong><br>
-            Contraseña: <strong>admin123</strong>
-        </div>
     </div>
 
     <script>
@@ -156,4 +148,3 @@ cat > /Applications/MAMP/htdocs/cliente_api/src/views/auth/login.php << 'EOF'
     </script>
 </body>
 </html>
-EOF

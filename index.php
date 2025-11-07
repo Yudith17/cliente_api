@@ -1,40 +1,42 @@
 <?php
-// index.php (en la raíz de CLIENTE_API)
+// index.php (en la raíz del proyecto)
+
+// Configuración básica
 session_start();
 
-// Mostrar errores
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Autocargar controladores
+function autoloadControllers($className) {
+    $file = __DIR__ . '/src/controller/' . $className . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+    }
+}
 
-// Configuración de controladores
+spl_autoload_register('autoloadControllers');
+
+// Obtener controlador y acción
 $controller = $_GET['controller'] ?? 'auth';
 $action = $_GET['action'] ?? 'login';
 
-// Mapeo de controladores - CORREGIDO para controller (singular)
-$controllers = [
-    'auth' => 'AuthController',
-    'tokenapi' => 'TokenApiController'
-];
+// Validar y ejecutar
+$controllerClass = ucfirst($controller) . 'Controller';
+$controllerFile = __DIR__ . '/src/controller/' . $controllerClass . '.php';
 
-// Verificar si el controlador existe
-$controllerName = $controllers[$controller] ?? $controllers['auth'];
-$controllerFile = __DIR__ . '/src/controller/' . $controllerName . '.php';
-
-if (!file_exists($controllerFile)) {
-    die("Controlador no encontrado: $controllerName - Archivo: $controllerFile");
+if (file_exists($controllerFile)) {
+    require_once $controllerFile;
+    
+    if (class_exists($controllerClass)) {
+        $app = new $controllerClass();
+        
+        if (method_exists($app, $action)) {
+            $app->$action();
+        } else {
+            die("Error: La acción '$action' no existe en el controlador $controllerClass");
+        }
+    } else {
+        die("Error: La clase '$controllerClass' no existe");
+    }
+} else {
+    die("Error: El controlador '$controller' no existe");
 }
-
-require_once $controllerFile;
-
-if (!class_exists($controllerName)) {
-    die("Clase $controllerName no encontrada");
-}
-
-$controllerInstance = new $controllerName();
-
-if (!method_exists($controllerInstance, $action)) {
-    die("Acción $action no encontrada en $controllerName");
-}
-
-$controllerInstance->$action();
 ?>

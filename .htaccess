@@ -1,9 +1,6 @@
 RewriteEngine On
 
-# Redirigir todas las solicitudes a index.php
+# Redirigir todo a index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
-
-# Configuraciones de seguridad
-Options -Indexes

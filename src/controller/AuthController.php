@@ -1,3 +1,4 @@
+
 <?php
 // src/controller/AuthController.php
 
@@ -44,14 +45,8 @@ class AuthController {
             }
         }
 
-        // RUTA CORREGIDA - usa views (no ../views)
-        $viewPath = __DIR__ . '/../views/auth/login.php';
-        
-        if (!file_exists($viewPath)) {
-            die("Error: No se encuentra la vista de login. Ruta: $viewPath");
-        }
-        
-        require $viewPath;
+        // Incluir la vista de login - RUTA CORREGIDA
+        require_once dirname(__DIR__, 2) . '/views/auth/login.php';
     }
 
     public function logout() {

@@ -24,7 +24,7 @@ class TokenApiController {
         $tokens = $this->tokenModel->getByUserId($_SESSION['user_id']);
         
         // RUTA CORREGIDA
-        $viewPath = __DIR__ . '/../views/token_api/index.php';
+        $viewPath =  dirname(__DIR__, 2) . '/views/token_api/index.php';
         
         if (!file_exists($viewPath)) {
             die("Vista no encontrada: $viewPath");
@@ -60,7 +60,7 @@ class TokenApiController {
             }
         }
 
-        $viewPath = __DIR__ . '/../views/token_api/create.php';
+        $viewPath = dirname(__DIR__, 2) .'/views/token_api/create.php';
         if (!file_exists($viewPath)) {
             die("Vista no encontrada: $viewPath");
         }
@@ -87,7 +87,7 @@ class TokenApiController {
             exit;
         }
 
-        $viewPath = __DIR__ . '/../views/token_api/view.php';
+        $viewPath = dirname(__DIR__, 2) . '/views/token_api/view.php';
         if (!file_exists($viewPath)) {
             die("Vista no encontrada: $viewPath");
         }
