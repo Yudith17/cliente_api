@@ -1,32 +1,47 @@
 <?php
-// src/Model/User.php
-
 class User {
-    private $db;
     private $conn;
+    private $table_name = "users";
 
-    public function __construct() {
-        require_once __DIR__ . '/../config/database.php';
-        $this->db = new Database();
-        $this->conn = $this->db->getConnection(); // Usar getConnection()
+    public $id;
+    public $username;
+    public $password;
+    public $role;
+
+    public function __construct($db) {
+        $this->conn = $db;
     }
 
-    public function login($username, $password) {
-        $stmt = $this->conn->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
+    public function login() {
+        if (!$this->conn) {
+            return false;
         }
 
-        return false;
-    }
+        $query = "SELECT id, username, password, role FROM " . $this->table_name . " WHERE username = ? LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        
+        if (!$stmt) {
+            return false;
+        }
+        
+        $stmt->bindParam(1, $this->username);
+        
+        if (!$stmt->execute()) {
+            return false;
+        }
 
-    public function getUserById($id) {
-        $stmt = $this->conn->prepare("SELECT id, username, role FROM users WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->fetch();
+        if($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Verificar la contraseña (tu hash es compatible con password_verify)
+            if(password_verify($this->password, $row['password'])) {
+                $this->id = $row['id'];
+                $this->username = $row['username'];
+                $this->role = $row['role'];
+                return true;
+            }
+        }
+        return false;
     }
 }
 ?>

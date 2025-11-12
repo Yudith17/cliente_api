@@ -1,58 +1,31 @@
 <?php
 class TokenApiController {
     private $db;
-    private $clienteApiModel;
-    private $tokenApiModel;
+    private $tokenApi;
 
     public function __construct() {
-        $this->db = Database::getConnection();
-        $this->clienteApiModel = new ClienteApi();
-        $this->tokenApiModel = new TokenApi();
-    }
-
-    // Generar nuevo token
-    public function generateToken($clienteApiId) {
-        // Verificar si el cliente existe y está activo
-        $cliente = $this->clienteApiModel->getById($clienteApiId);
+        // Incluir las clases necesarias con rutas correctas
+        require_once __DIR__ . '/../config/database.php';
+        require_once __DIR__ . '/../Model/TokenApi.php';
         
-        if (!$cliente || $cliente['estado'] != 'activo') {
-            return ['success' => false, 'message' => 'Cliente no válido o inactivo'];
+        $database = new Database();
+        $this->db = $database->getConnection();
+        $this->tokenApi = new TokenApi($this->db);
+    }
+
+    public function create() {
+        if($_POST) {
+            $this->tokenApi->user_id = $_SESSION['user_id'];
+            $token = $this->tokenApi->create();
+            
+            if($token) {
+                $_SESSION['success'] = "Token creado exitosamente: " . $token;
+                header("Location: index.php");
+                exit;
+            } else {
+                $_SESSION['error'] = "Error al crear el token";
+            }
         }
-
-        // Generar token único
-        $token = $this->generateUniqueToken();
-        
-        // Guardar token en la base de datos
-        $tokenId = $this->tokenApiModel->create([
-            'Id_cliente_Api' => $clienteApiId,
-            'Token' => $token,
-            'Estado' => 1
-        ]);
-
-        if ($tokenId) {
-            return [
-                'success' => true,
-                'token' => $token,
-                'message' => 'Token generado exitosamente'
-            ];
-        }
-
-        return ['success' => false, 'message' => 'Error al generar token'];
-    }
-
-    // Generar token único
-    private function generateUniqueToken() {
-        return uniqid() . '_' . bin2hex(random_bytes(16));
-    }
-
-    // Validar token
-    public function validateToken($token) {
-        return $this->tokenApiModel->getActiveToken($token);
-    }
-
-    // Registrar uso del token
-    public function logRequest($tokenId, $tipo) {
-        $this->tokenApiModel->logRequest($tokenId, $tipo);
     }
 }
 ?>

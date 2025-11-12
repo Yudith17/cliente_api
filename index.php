@@ -1,70 +1,56 @@
 <?php
-require_once '/../src/config/database.php';
-require_once '../src/controller/TokenApiController.php';
-require_once '../src/controller/HotelController.php';
+session_start();
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+// Mostrar errores para debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Obtener método de la solicitud
-$method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path = str_replace('/api/', '', $path);
+// Configuración específica para MAMP
+define('BASE_URL', 'http://localhost:8888/cliente_api/');
+define('BASE_PATH', __DIR__ . '/');
 
-// Procesar solicitud
-switch ($method) {
-    case 'POST':
-        if ($path == 'generate-token') {
-            // Generar nuevo token
-            $input = json_decode(file_get_contents('php://input'), true);
-            $clienteId = $input['cliente_id'] ?? null;
-            
-            $tokenController = new TokenApiController();
-            $result = $tokenController->generateToken($clienteId);
-            
-            echo json_encode($result);
-        }
+// Incluir archivos necesarios
+require_once BASE_PATH . 'src/config/database.php';
+require_once BASE_PATH . 'src/Model/User.php';
+require_once BASE_PATH . 'src/Model/TokenApi.php';
+require_once BASE_PATH . 'src/Model/ClienteApi.php';
+require_once BASE_PATH . 'src/Controller/AuthController.php';
+require_once BASE_PATH . 'src/Controller/TokenApiController.php';
+require_once BASE_PATH . 'src/Controller/AdminController.php';
+
+// Obtener la URL
+$url = isset($_GET['url']) ? $_GET['url'] : 'auth/login';
+$url = rtrim($url, '/');
+$url_parts = explode('/', $url);
+
+// Controlador por defecto
+$controller_name = !empty($url_parts[0]) ? $url_parts[0] : 'auth';
+$action = !empty($url_parts[1]) ? $url_parts[1] : 'login';
+
+// Instanciar controlador
+switch($controller_name) {
+    case 'auth':
+        $controller = new AuthController();
         break;
-
-    case 'GET':
-        if (strpos($path, 'hotels') !== false) {
-            // Obtener token del header
-            $headers = getallheaders();
-            $token = isset($headers['Authorization']) ? 
-                     str_replace('Bearer ', '', $headers['Authorization']) : null;
-
-            if (!$token) {
-                http_response_code(401);
-                echo json_encode(['success' => false, 'message' => 'Token requerido']);
-                exit;
-            }
-
-            $hotelController = new HotelController();
-            
-            if ($path == 'hotels') {
-                // Lista de hoteles con filtros opcionales
-                $filters = [
-                    'category' => $_GET['category'] ?? null,
-                    'district' => $_GET['district'] ?? null,
-                    'department' => $_GET['department'] ?? null
-                ];
-                
-                $result = $hotelController->getHotels($token, $filters);
-                echo json_encode($result);
-                
-            } else if (preg_match('/hotels\/(\d+)/', $path, $matches)) {
-                // Hotel específico por ID
-                $hotelId = $matches[1];
-                $result = $hotelController->getHotelById($token, $hotelId);
-                echo json_encode($result);
-            }
-        }
+    case 'token':
+        $controller = new TokenApiController();
         break;
-
+    case 'admin':
+        $controller = new AdminController();
+        break;
     default:
-        http_response_code(405);
-        echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+        // Si no existe, redirigir al login
+        header("Location: " . BASE_URL . "auth/login");
+        exit;
+}
+
+// Ejecutar acción
+if(method_exists($controller, $action)) {
+    $controller->$action();
+} else {
+    // Si la acción no existe, mostrar error
+    http_response_code(404);
+    echo "Error 404: Página no encontrada";
+    exit;
 }
 ?>

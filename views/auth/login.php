@@ -1,150 +1,118 @@
+<?php
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+// Si ya está logueado, redirigir directamente al index principal
+if(isset($_SESSION['user_id'])) {
+    header("Location: ../../index.php");
+    exit;
+}
+
+// Procesar login si se envió el formulario
+$error = '';
+if($_POST) {
+    require_once __DIR__ . '/../../src/config/database.php';
+    require_once __DIR__ . '/../../src/Model/User.php';
+    
+    $database = new Database();
+    $db = $database->getConnection();
+    $user = new User($db);
+    
+    $user->username = $_POST['username'];
+    $user->password = $_POST['password'];
+    
+    if($user->login()) {
+        $_SESSION['user_id'] = $user->id;
+        $_SESSION['username'] = $user->username;
+        $_SESSION['role'] = $user->role;
+        
+        // Redirigir al INDEX.PRINCIPAL después del login exitoso
+        header("Location: ../../index.php");
+        exit;
+    } else {
+        $error = "Usuario o contraseña incorrectos";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Api Hospedaje</title>
+    <title>Login - Sistema Hoteles Huanta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
         .login-container {
-            background: white;
-            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
         }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .logo h1 {
-            color: #007bff;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .logo p {
-            color: #6c757d;
-            font-size: 1.1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #495057;
-            font-weight: 600;
-        }
-
-        input {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        }
-
-        button {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        .card-header {
+            background: linear-gradient(to right, #2c3e50, #3498db);
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 0.5rem;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 123, 255, 0.3);
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
             text-align: center;
-            border: 1px solid #f5c6cb;
+            padding: 25px 20px;
+            border-bottom: none;
+            border-radius: 15px 15px 0 0 !important;
         }
-
-        .demo-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 2rem;
-            border: 1px solid #bee5eb;
+        .hotel-icon {
+            font-size: 48px;
+            text-align: center;
+            display: block;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="logo">
-            <h1> Api Hospedaje</h1>
-            <p>Gestión de Tokens API</p>
+        <div class="login-card">
+            <div class="card">
+                <div class="card-header">
+                    <div class="hotel-icon">🏨</div>
+                    <h4 class="mb-0">Sistema Hoteles Huanta</h4>
+                    <small>Iniciar Sesión</small>
+                </div>
+                <div class="card-body p-4">
+                    <?php if($error): ?>
+                        <div class="alert alert-danger"><?php echo $error; ?></div>
+                    <?php endif; ?>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Usuario</label>
+                            <input type="text" name="username" class="form-control" value="admin" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" name="password" class="form-control" value="admin123" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <strong>Ingresar al Sistema</strong>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-3 text-center">
+                        <small class="text-muted">
+                            Credenciales: admin / admin123
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <?php if (!empty($error)): ?>
-            <div class="error"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
-
-        <form method="POST" action="index.php?controller=auth&action=login">
-            <div class="form-group">
-                <label for="username">Usuario:</label>
-                <input type="text" id="username" name="username" required 
-                       value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"
-                       placeholder="Ingresa tu usuario">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Contraseña:</label>
-                <input type="password" id="password" name="password" required 
-                       placeholder="Ingresa tu contraseña">
-            </div>
-            
-            <button type="submit">Ingresar al Sistema</button>
-        </form>
-
     </div>
-
-    <script>
-        document.getElementById('username').focus();
-    </script>
 </body>
 </html>

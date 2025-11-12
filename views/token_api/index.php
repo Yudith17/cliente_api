@@ -1,11 +1,37 @@
-
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php?controller=auth&action=login");
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// VERIFICAR SI ESTÁ LOGUEADO - Si no, redirigir al login
+if(!isset($_SESSION['user_id'])) {
+    header("Location: ../auth/login.php");
     exit;
+}
+
+// Incluir modelos con rutas correctas
+require_once __DIR__ . '/../../src/config/database.php';
+require_once __DIR__ . '/../../src/Model/TokenApi.php';
+
+$database = new Database();
+$db = $database->getConnection();
+$tokenApi = new TokenApi($db);
+
+// Obtener tokens del usuario
+$tokens = $tokenApi->getAllByUser($_SESSION['user_id']);
+
+// Procesar creación de token
+if(isset($_POST['crear_token'])) {
+    $tokenApi->user_id = $_SESSION['user_id'];
+    $nuevo_token = $tokenApi->create();
+    
+    if($nuevo_token) {
+        $mensaje_exito = "Token creado exitosamente: " . $nuevo_token;
+        // Recargar tokens
+        $tokens = $tokenApi->getAllByUser($_SESSION['user_id']);
+    } else {
+        $mensaje_error = "Error al crear el token";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -13,419 +39,269 @@ if (!isset($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Api Hospedaje - Gestión de Tokens</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 30px 20px;
-        }
-
-        .dashboard-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            color: white;
-            padding: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-        }
-
-        .user-welcome {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-
-        .btn {
-            padding: 12px 25px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn-primary {
-            background: #28a745;
-            border-color: #28a745;
-        }
-
-        .btn-primary:hover {
-            background: #218838;
-            border-color: #1e7e34;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            border-color: #dc3545;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-            border-color: #bd2130;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        .alert {
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            border-radius: 10px;
-            border-left: 5px solid;
-            font-weight: 500;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border-left-color: #28a745;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border-left-color: #dc3545;
-        }
-
-        .new-token {
-            background: #fff3cd;
-            border: 2px solid #ffeaa7;
-            padding: 25px;
-            margin: 25px 0;
-            border-radius: 10px;
-            border-left: 5px solid #ffc107;
-        }
-
-        .full-token {
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            word-break: break-all;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px dashed #dee2e6;
-            margin-top: 15px;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #6c757d;
-        }
-
-        .empty-state h3 {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #495057;
-        }
-
-        .token-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .token-table th {
-            background: #f8f9fa;
-            padding: 18px 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #e9ecef;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .token-table td {
-            padding: 18px 15px;
-            border-bottom: 1px solid #e9ecef;
-            vertical-align: middle;
-        }
-
-        .token-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .token-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .token {
-            font-family: 'Courier New', monospace;
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-            font-size: 13px;
-            color: #495057;
-        }
-
-        .status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .action-btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-        }
-
-        .action-view {
-            background: #007bff;
-            color: white;
-        }
-
-        .action-view:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        .action-update {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .action-update:hover {
-            background: #138496;
-            transform: translateY(-1px);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .date-cell {
-            font-size: 14px;
-            color: #6c757d;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 20px;
-                text-align: center;
-            }
-
-            .btn-group {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .token-table {
-                display: block;
-                overflow-x: auto;
-            }
-
-            .content {
-                padding: 20px;
-            }
-        }
-    </style>
+    <title>Tokens API - Sistema Hoteles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="dashboard-card">
-            <!-- Header -->
-            <div class="header">
-                <div>
-                    <h1>Api Hospedaje</h1>
-                    <div class="user-welcome">Bienvenido, <?= htmlspecialchars($_SESSION['username'] ?? 'Usuario') ?></div>
-                </div>
-                <div class="btn-group">
-                    <a href="index.php?controller=tokenapi&action=create" class="btn btn-primary">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                        </svg>
-                        Generar Nuevo Token
-                    </a>
-                    <a href="index.php?controller=auth&action=logout" class="btn btn-danger">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
-                            <path d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
-                        </svg>
-                        Cerrar Sesión
-                    </a>
-                </div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand">🏨 Sistema Hoteles Huanta</span>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">Hola, <?php echo $_SESSION['username']; ?></span>
+                <a class="nav-link" href="../../src/Controller/AuthController.php?action=logout">Cerrar Sesión</a>
             </div>
+        </div>
+    </nav>
 
-            <!-- Content -->
-            <div class="content">
-                <!-- Alert Messages -->
-                <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success">
-                        <?= $_SESSION['success'] ?>
-                    </div>
-                    <?php unset($_SESSION['success']); ?>
-                <?php endif; ?>
+    <div class="container mt-4">
+        <!-- Botones de navegación rápida -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-2">
+                <a href="../clientes/index.php" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-users me-2"></i>
+                    👥 Clientes Registrados
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="../hoteles/index.php" class="btn btn-outline-success w-100">
+                    <i class="fas fa-hotel me-2"></i>
+                    🏨 Hoteles Registrados
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="../reservas/index.php" class="btn btn-outline-info w-100">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    📅 Reservas
+                </a>
+            </div>
+        </div>
 
-                <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-error">
-                        <?= $_SESSION['error'] ?>
-                    </div>
-                    <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-key me-2"></i>🔑 Mis Tokens API</h2>
+            <div>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalToken">
+                    <i class="fas fa-plus-circle me-1"></i>
+                    ➕ Generar Nuevo Token
+                </button>
+            </div>
+        </div>
 
-                <!-- New Token Display -->
-                <?php if (isset($_SESSION['new_token'])): ?>
-                    <div class="new-token">
-                        <strong>¡Nuevo Token Generado!</strong>
-                        <p>Guarda este token en un lugar seguro. No podrás verlo completo nuevamente:</p>
-                        <div class="full-token"><?= $_SESSION['new_token'] ?></div>
-                    </div>
-                    <?php unset($_SESSION['new_token']); ?>
-                <?php endif; ?>
+        <?php if(isset($mensaje_exito)): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>
+                <?php echo $mensaje_exito; ?>
+            </div>
+        <?php endif; ?>
 
-                <!-- Tokens List -->
-                <?php if (empty($tokens)): ?>
-                    <div class="empty-state">
-                        <h3>No tienes tokens generados</h3>
-                        <p>Comienza generando tu primer token API para integrar con tus aplicaciones.</p>
-                        <a href="index.php?controller=tokenapi&action=create" class="btn btn-primary" style="margin-top: 20px;">
-                            Generar Primer Token
-                        </a>
+        <?php if(isset($mensaje_error)): ?>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <?php echo $mensaje_error; ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Lista de Tokens Generados
+                </h5>
+            </div>
+            <div class="card-body">
+                <?php if($tokens->rowCount() > 0): ?>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Token</th>
+                                    <th>Creado</th>
+                                    <th>Expira</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while ($row = $tokens->fetch(PDO::FETCH_ASSOC)): ?>
+                                <tr>
+                                    <td><?php echo $row['id']; ?></td>
+                                    <td>
+                                        <i class="fas fa-tag me-1 text-muted"></i>
+                                        <?php echo htmlspecialchars($row['name']); ?>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light p-1 rounded" style="font-size: 0.8em;">
+                                            <?php echo substr($row['token'], 0, 20) . '...'; ?>
+                                        </code>
+                                        <button class="btn btn-sm btn-outline-secondary ms-1" 
+                                                onclick="copiarToken('<?php echo $row['token']; ?>')"
+                                                title="Copiar token completo">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-calendar-plus me-1 text-muted"></i>
+                                        <?php echo date('d/m/Y H:i', strtotime($row['created_at'])); ?>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-clock me-1 text-muted"></i>
+                                        <?php echo date('d/m/Y H:i', strtotime($row['expires_at'])); ?>
+                                    </td>
+                                    <td>
+                                        <?php if($row['is_active'] == 1): ?>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Activo
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-times me-1"></i>Inactivo
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" 
+                                                    onclick="verToken('<?php echo $row['token']; ?>', '<?php echo htmlspecialchars($row['name']); ?>')"
+                                                    title="Ver token completo">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" 
+                                                    onclick="confirmarEliminacion(<?php echo $row['id']; ?>)"
+                                                    title="Eliminar token">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
                     </div>
                 <?php else: ?>
-                    <table class="token-table">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Token</th>
-                                <th>Fecha Creación</th>
-                                <th>Expira</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($tokens as $token): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= htmlspecialchars($token['name']) ?></strong>
-                                </td>
-                                <td>
-                                    <span class="token" title="Token completo solo visible al crearlo">
-                                        <?= substr($token['token'], 0, 10) ?>...<?= substr($token['token'], -10) ?>
-                                    </span>
-                                </td>
-                                <td class="date-cell">
-                                    <?= date('d/m/Y H:i', strtotime($token['created_at'])) ?>
-                                </td>
-                                <td class="date-cell">
-                                    <?= date('d/m/Y H:i', strtotime($token['expires_at'])) ?>
-                                </td>
-                                <td>
-                                    <span class="status status-<?= $token['is_active'] ? 'active' : 'inactive' ?>">
-                                        <?= $token['is_active'] ? 'Activo' : 'Inactivo' ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="actions">
-                                        <a href="index.php?controller=tokenapi&action=view&id=<?= $token['id'] ?>" 
-                                           class="action-btn action-view">
-                                            Ver
-                                        </a>
-                                        <a href="index.php?controller=tokenapi&action=deactivate&id=<?= $token['id'] ?>" 
-                                           class="action-btn action-update"
-                                           onclick="return confirm('¿Estás seguro de que deseas actualizar este token?')">
-                                            Actualizar
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="text-center py-4">
+                        <i class="fas fa-key fa-3x text-muted mb-3"></i>
+                        <h5>No hay tokens generados</h5>
+                        <p class="text-muted">Genera tu primer token para empezar a usar la API</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalToken">
+                            <i class="fas fa-plus-circle me-1"></i>
+                            Generar Primer Token
+                        </button>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
+    <!-- Modal para crear token -->
+    <div class="modal fade" id="modalToken" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-key me-2"></i>
+                        Generar Nuevo Token
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="crear_token" value="1">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-tag me-1"></i>
+                                Nombre del Token
+                            </label>
+                            <input type="text" name="name" class="form-control" 
+                                   placeholder="Ej: Token para API de Hoteles" required>
+                            <div class="form-text">Asigna un nombre descriptivo para identificar este token.</div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <small>El token expirará en 1 año y será único. Guárdalo en un lugar seguro.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-key me-1"></i>
+                            Generar Token
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver token completo -->
+    <div class="modal fade" id="modalVerToken" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Token: <span id="tokenNombre"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Token completo:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="tokenCompleto" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copiarTokenCompleto()">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <small>Este token proporciona acceso a la API. No lo compartas con nadie.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Efectos de hover mejorados
-        document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.btn, .action-btn');
-            buttons.forEach(button => {
-                button.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-2px)';
-                });
-                button.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0)';
-                });
+        function copiarToken(token) {
+            navigator.clipboard.writeText(token).then(function() {
+                alert('Token copiado al portapapeles');
+            }).catch(function(err) {
+                console.error('Error al copiar: ', err);
             });
+        }
+
+        function verToken(token, nombre) {
+            document.getElementById('tokenNombre').textContent = nombre;
+            document.getElementById('tokenCompleto').value = token;
+            var modal = new bootstrap.Modal(document.getElementById('modalVerToken'));
+            modal.show();
+        }
+
+        function copiarTokenCompleto() {
+            var tokenInput = document.getElementById('tokenCompleto');
+            tokenInput.select();
+            document.execCommand('copy');
+            alert('Token copiado al portapapeles');
+        }
+
+        function confirmarEliminacion(tokenId) {
+            if(confirm('¿Estás seguro de que deseas eliminar este token?')) {
+                // Aquí puedes agregar la lógica para eliminar el token
+                alert('Funcionalidad de eliminación pendiente para el token ID: ' + tokenId);
+            }
+        }
+
+        // Tooltips de Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     </script>
 </body>
