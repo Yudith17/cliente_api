@@ -1,119 +1,58 @@
 <?php
-// src/controller/TokenApiController.php
-
-require_once __DIR__ . '/../Model/TokenApi.php';
-
 class TokenApiController {
-    private $tokenModel;
+    private $db;
+    private $clienteApiModel;
+    private $tokenApiModel;
 
     public function __construct() {
-        $this->tokenModel = new TokenApi();
+        $this->db = Database::getConnection();
+        $this->clienteApiModel = new ClienteApi();
+        $this->tokenApiModel = new TokenApi();
     }
 
-    public function index() {
-        // Verificar sesión
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+    // Generar nuevo token
+    public function generateToken($clienteApiId) {
+        // Verificar si el cliente existe y está activo
+        $cliente = $this->clienteApiModel->getById($clienteApiId);
         
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?controller=auth&action=login");
-            exit;
+        if (!$cliente || $cliente['estado'] != 'activo') {
+            return ['success' => false, 'message' => 'Cliente no válido o inactivo'];
         }
 
-        $tokens = $this->tokenModel->getByUserId($_SESSION['user_id']);
+        // Generar token único
+        $token = $this->generateUniqueToken();
         
-        // RUTA CORREGIDA
-        $viewPath =  dirname(__DIR__, 2) . '/views/token_api/index.php';
-        
-        if (!file_exists($viewPath)) {
-            die("Vista no encontrada: $viewPath");
+        // Guardar token en la base de datos
+        $tokenId = $this->tokenApiModel->create([
+            'Id_cliente_Api' => $clienteApiId,
+            'Token' => $token,
+            'Estado' => 1
+        ]);
+
+        if ($tokenId) {
+            return [
+                'success' => true,
+                'token' => $token,
+                'message' => 'Token generado exitosamente'
+            ];
         }
-        
-        require $viewPath;
+
+        return ['success' => false, 'message' => 'Error al generar token'];
     }
 
-    public function create() {
-        // Verificar sesión
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?controller=auth&action=login");
-            exit;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = $_POST['name'] ?? '';
-            $expires_days = $_POST['expires_days'] ?? 30;
-
-            $token = $this->tokenModel->create($_SESSION['user_id'], $name, $expires_days);
-            
-            if ($token) {
-                $_SESSION['success'] = 'Token creado exitosamente';
-                $_SESSION['new_token'] = $token;
-                header("Location: index.php?controller=tokenapi&action=index");
-                exit;
-            } else {
-                $_SESSION['error'] = 'Error al crear el token';
-            }
-        }
-
-        $viewPath = dirname(__DIR__, 2) .'/views/token_api/create.php';
-        if (!file_exists($viewPath)) {
-            die("Vista no encontrada: $viewPath");
-        }
-        require $viewPath;
+    // Generar token único
+    private function generateUniqueToken() {
+        return uniqid() . '_' . bin2hex(random_bytes(16));
     }
 
-    public function view() {
-        // Verificar sesión
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?controller=auth&action=login");
-            exit;
-        }
-
-        $id = $_GET['id'] ?? 0;
-        $token = $this->tokenModel->getById($id, $_SESSION['user_id']);
-
-        if (!$token) {
-            $_SESSION['error'] = 'Token no encontrado';
-            header("Location: index.php?controller=tokenapi&action=index");
-            exit;
-        }
-
-        $viewPath = dirname(__DIR__, 2) . '/views/token_api/view.php';
-        if (!file_exists($viewPath)) {
-            die("Vista no encontrada: $viewPath");
-        }
-        require $viewPath;
+    // Validar token
+    public function validateToken($token) {
+        return $this->tokenApiModel->getActiveToken($token);
     }
 
-    public function deactivate() {
-        // Verificar sesión
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        if (!isset($_SESSION['user_id'])) {
-            header("HTTP/1.1 401 Unauthorized");
-            exit;
-        }
-
-        $id = $_GET['id'] ?? 0;
-        if ($this->tokenModel->deactivate($id, $_SESSION['user_id'])) {
-            $_SESSION['success'] = 'Token desactivado exitosamente';
-        } else {
-            $_SESSION['error'] = 'Error al desactivar el token';
-        }
-
-        header("Location: index.php?controller=tokenapi&action=index");
-        exit;
+    // Registrar uso del token
+    public function logRequest($tokenId, $tipo) {
+        $this->tokenApiModel->logRequest($tokenId, $tipo);
     }
 }
 ?>
